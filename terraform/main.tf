@@ -286,13 +286,13 @@ resource "aws_vpc_security_group_ingress_rule" "eks_api_from_jenkins" {
   description                  = "EKS API from Jenkins"
 }
 
-# Latest Amazon Linux 2023 AMI (AWS CLI v2 is preinstalled)
-data "aws_ssm_parameter" "al2023_ami" {
-  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+# Latest official Ubuntu Server 24.04 LTS AMI, published by Canonical
+data "aws_ssm_parameter" "ubuntu_ami" {
+  name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }
 
 resource "aws_instance" "jenkins" {
-  ami                         = data.aws_ssm_parameter.al2023_ami.value
+  ami                         = data.aws_ssm_parameter.ubuntu_ami.value
   instance_type               = var.jenkins_instance_type
   subnet_id                   = sort(data.aws_subnets.default.ids)[0]
   vpc_security_group_ids      = [aws_security_group.jenkins.id]
@@ -305,26 +305,46 @@ resource "aws_instance" "jenkins" {
     volume_type = "gp3"
   }
 
-  # Installs Java, Git, Docker, Node.js, Jenkins and kubectl on first boot.
+  # Installs Java, Git, Docker, AWS CLI v2, kubectl and Jenkins on first boot.
   # Progress log on the instance: /var/log/cloud-init-output.log
   user_data = <<-EOF
     #!/bin/bash
-    dnf install -y java-21-amazon-corretto-headless fontconfig git docker
-    # AL2023 ships Node.js as versioned packages; 22 matches the Dockerfile
-    dnf install -y nodejs22 nodejs22-npm
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Java 21 (required by Jenkins), Git, Docker and tools used below
+    apt-get update
+    apt-get install -y fontconfig openjdk-21-jre-headless git docker.io curl unzip
     systemctl enable --now docker
 
-    # Official Jenkins LTS repo (the .repo file includes its own GPG key URL)
-    curl -fsSL -o /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/rpm-stable/jenkins.repo
-    dnf install -y jenkins
-    systemctl daemon-reload
-    usermod -aG docker jenkins
-    systemctl enable --now jenkins
+    # AWS CLI v2 (official installer, installs to /usr/local/bin/aws)
+    curl -fsSL -o /tmp/awscliv2.zip https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    unzip -q /tmp/awscliv2.zip -d /tmp
+    /tmp/aws/install
 
+    # kubectl matching the EKS minor version
     KVER=$(curl -fsSL https://dl.k8s.io/release/stable-${var.kubernetes_version}.txt)
     curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$KVER/bin/linux/amd64/kubectl"
     chmod +x /usr/local/bin/kubectl
+
+    # Jenkins LTS from the official repository
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
+    apt-get update
+    apt-get install -y jenkins
+
+    # Let Jenkins run docker; restart so the new group takes effect
+    usermod -aG docker jenkins
+    systemctl enable jenkins
+    systemctl restart jenkins
   EOF
+
+  # A newer Ubuntu AMI or an edited install script would otherwise make every
+  # later `terraform apply` rebuild Jenkins and wipe its setup. To rebuild on
+  # purpose, run: terraform apply -replace="aws_instance.jenkins"
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
 
   tags = {
     Name = "${var.cluster_name}-jenkins"

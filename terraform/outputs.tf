@@ -20,7 +20,7 @@ output "jenkins_url" {
 
 output "jenkins_ssh" {
   description = "SSH command for the Jenkins server"
-  value       = "ssh -i <path-to-${var.jenkins_key_name}.pem> ec2-user@${aws_instance.jenkins.public_ip}"
+  value       = "ssh -i <path-to-${var.jenkins_key_name}.pem> ubuntu@${aws_instance.jenkins.public_ip}"
 }
 
 output "jenkins_role_arn" {

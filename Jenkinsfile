@@ -38,10 +38,14 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                dir('frontend') {
-                    sh 'npm ci'
-                    sh 'npm run build'
-                }
+                // Runs npm inside the official Node 22 image (same as the Dockerfile),
+                // so Node.js does not need to be installed on the Jenkins server.
+                // -u keeps the created files owned by the jenkins user.
+                sh '''
+                    docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp \
+                        -v "$PWD/frontend":/app -w /app \
+                        node:22-alpine sh -c "npm ci && npm run build"
+                '''
             }
         }
 

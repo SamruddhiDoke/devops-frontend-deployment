@@ -92,7 +92,7 @@ Leaving everything running costs roughly **US $7 per day (about $0.30 per hour)*
 2. **kubectl (your laptop)**: run the `configure_kubectl` output. Your Terraform identity is cluster admin.
 3. **Jenkins setup**:
    - Wait about 5 minutes after apply for the install script to finish. Its log is `/var/log/cloud-init-output.log`.
-   - SSH in and check that `java`, `docker`, `node`, `npm`, `aws` and `kubectl` are all installed.
+   - SSH in as `ubuntu` (the Jenkins server runs Ubuntu Server 24.04 LTS) and check that `java`, `git`, `docker`, `aws` and `kubectl` are all installed. Node.js is not needed on the server; the pipeline runs npm inside the `node:22-alpine` container.
    - Open the `jenkins_url` output. Unlock Jenkins with `/var/lib/jenkins/secrets/initialAdminPassword` and install the suggested plugins (they include Pipeline and Git).
    - Create a **Pipeline** job using *Pipeline script from SCM*: Git, your GitHub repo URL, the correct branch, and Script Path `Jenkinsfile`. If the repo is private, add GitHub credentials (a personal access token) in Jenkins.
    - Run the first build manually (**Build Now**). After that, the `pollSCM` trigger in the Jenkinsfile checks GitHub about every 5 minutes and builds new commits automatically. GitHub webhooks are not used because port 8080 only allows your IP.
@@ -100,7 +100,7 @@ Leaving everything running costs roughly **US $7 per day (about $0.30 per hour)*
 
 ## How Jenkins deploys a new image
 
-1. Checks out the repo, then runs `npm ci` and `npm run build` in `frontend/` as a fast build check.
+1. Checks out the repo, then runs `npm ci` and `npm run build` for `frontend/` inside a `node:22-alpine` container as a fast build check.
 2. Builds the image from the repo root and tags it `<account>.dkr.ecr.ap-south-1.amazonaws.com/taskflow-frontend:<BUILD_NUMBER>`. The account ID is read at runtime with `aws sts get-caller-identity`.
 3. Logs in to ECR and pushes the image.
 4. Runs `aws eks update-kubeconfig` for `taskflow-eks`.
