@@ -1,0 +1,25 @@
+# Read-only access to nodes for Jenkins (kubectl get nodes).
+# The Jenkins EKS access entry (terraform/main.tf) puts the Jenkins IAM role in the
+# "jenkins-node-readers" group. Apply this once from your laptop with your admin
+# identity; Jenkins itself cannot create cluster-wide RBAC objects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jenkins-node-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-node-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jenkins-node-reader
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: jenkins-node-readers

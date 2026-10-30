@@ -16,7 +16,7 @@ GitHub ──► Jenkins (EC2, IAM role) ──► docker build ──► Amazon
 ```
 
 - **Terraform** creates the ECR repository, the EKS cluster and node group, the IAM roles, and the Jenkins EC2 instance in the **default VPC** of `ap-south-1`. No NAT gateway or custom VPC is created.
-- **Jenkins** uses its EC2 IAM role (no stored keys). Through an EKS access entry it gets *edit* rights in the `default` namespace only.
+- **Jenkins** uses its EC2 IAM role (no stored keys). Through an EKS access entry it gets *edit* rights in the `default` namespace only, plus read-only access to nodes through the Kubernetes group `jenkins-node-readers` (`k8s/jenkins-node-reader.yaml`, applied once by the admin).
 - **EKS** runs the frontend. The `LoadBalancer` Service creates an AWS Classic Load Balancer.
 
 ## Folder structure
@@ -36,7 +36,8 @@ GitHub ──► Jenkins (EC2, IAM role) ──► docker build ──► Amazon
 │   └── terraform.tfvars.example
 ├── k8s/
 │   ├── deployment.yaml
-│   └── service.yaml
+│   ├── service.yaml
+│   └── jenkins-node-reader.yaml # RBAC: lets Jenkins run `kubectl get nodes`
 ├── monitoring/
 │   ├── prometheus-config.yaml   # ConfigMap: prometheus-config
 │   ├── prometheus.yaml          # RBAC + Deployment + Service: prometheus
@@ -89,11 +90,11 @@ Leaving everything running costs roughly **US $7 per day (about $0.30 per hour)*
 ## Deployment workflow (high level)
 
 1. **Terraform**: run `init`, `plan` and `apply` in `terraform/`. Note the outputs.
-2. **kubectl (your laptop)**: run the `configure_kubectl` output. Your Terraform identity is cluster admin.
+2. **kubectl (your laptop)**: run the `configure_kubectl` output. Your Terraform identity is cluster admin. Apply `k8s/jenkins-node-reader.yaml` once.
 3. **Jenkins setup**:
    - Wait about 5 minutes after apply for the install script to finish. Its log is `/var/log/cloud-init-output.log`.
    - SSH in as `ubuntu` (the Jenkins server runs Ubuntu Server 24.04 LTS) and check that `java`, `git`, `docker`, `aws` and `kubectl` are all installed. Node.js is not needed on the server; the pipeline runs npm inside the `node:22-alpine` container.
-   - Open the `jenkins_url` output. Unlock Jenkins with `/var/lib/jenkins/secrets/initialAdminPassword` and install the suggested plugins (they include Pipeline and Git).
+   - Open the `jenkins_url` output. Unlock Jenkins with `/var/lib/jenkins/secrets/initialAdminPassword`. Choose *Select plugins to install* and install only **Pipeline** and **Git**.
    - Create a **Pipeline** job using *Pipeline script from SCM*: Git, your GitHub repo URL, the correct branch, and Script Path `Jenkinsfile`. If the repo is private, add GitHub credentials (a personal access token) in Jenkins.
    - Run the first build manually (**Build Now**). After that, the `pollSCM` trigger in the Jenkinsfile checks GitHub about every 5 minutes and builds new commits automatically. GitHub webhooks are not used because port 8080 only allows your IP.
 4. **Monitoring**: create the Grafana secret, then apply the files in `monitoring/` (see below).

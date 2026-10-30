@@ -219,13 +219,16 @@ resource "aws_iam_instance_profile" "jenkins" {
 }
 
 ###############################################################################
-# EKS access for Jenkins: edit rights in the app namespace only
+# EKS access for Jenkins: edit rights in the app namespace, plus read-only
+# access to nodes (AWS access policies have no node permissions, so this uses
+# the Kubernetes group bound in k8s/jenkins-node-reader.yaml)
 ###############################################################################
 
 resource "aws_eks_access_entry" "jenkins" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = aws_iam_role.jenkins.arn
-  type          = "STANDARD"
+  cluster_name      = aws_eks_cluster.main.name
+  principal_arn     = aws_iam_role.jenkins.arn
+  type              = "STANDARD"
+  kubernetes_groups = ["jenkins-node-readers"]
 }
 
 resource "aws_eks_access_policy_association" "jenkins" {
