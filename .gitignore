@@ -1,0 +1,16 @@
+# Frontend
+node_modules/
+frontend/dist/
+
+# Terraform: state can contain sensitive data, never commit it
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform/terraform.tfvars
+terraform/tfplan
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

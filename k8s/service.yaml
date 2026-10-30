@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskflow-frontend
+  labels:
+    app: taskflow-frontend
+spec:
+  # EKS creates a public AWS load balancer for this Service
+  type: LoadBalancer
+  selector:
+    app: taskflow-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
