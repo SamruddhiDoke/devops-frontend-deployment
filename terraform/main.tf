@@ -1,9 +1,3 @@
-###############################################################################
-# Networking: reuse the default VPC and its default subnets (one per AZ).
-# Default subnets are public and auto-assign public IPs, so worker nodes and
-# Jenkins can reach ECR and EKS without a NAT gateway.
-###############################################################################
-
 data "aws_vpc" "default" {
   default = true
 }
@@ -20,8 +14,6 @@ data "aws_subnets" "default" {
   }
 }
 
-# Tells EKS these subnets can host internet-facing load balancers
-# (used by the LoadBalancer Service in k8s/service.yaml)
 resource "aws_ec2_tag" "public_elb" {
   for_each    = toset(data.aws_subnets.default.ids)
   resource_id = each.value
@@ -29,9 +21,8 @@ resource "aws_ec2_tag" "public_elb" {
   value       = "1"
 }
 
-###############################################################################
+#############################
 # Amazon ECR repository
-###############################################################################
 
 resource "aws_ecr_repository" "frontend" {
   name                 = var.ecr_repository_name
@@ -41,9 +32,8 @@ resource "aws_ecr_repository" "frontend" {
   force_delete = true
 }
 
-###############################################################################
+#######################################
 # IAM role for the EKS control plane
-###############################################################################
 
 resource "aws_iam_role" "eks_cluster" {
   name = "${var.cluster_name}-cluster-role"
@@ -63,9 +53,9 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-###############################################################################
+###################
 # EKS cluster
-###############################################################################
+
 
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
@@ -75,14 +65,14 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids = data.aws_subnets.default.ids
 
-    # Public endpoint: lets you run kubectl from your laptop.
+    # Public endpoint: lets run kubectl from laptop.
     # Private endpoint: Jenkins and the nodes (inside the VPC) reach the API privately.
     endpoint_public_access  = true
     endpoint_private_access = true
     public_access_cidrs     = var.cluster_endpoint_public_cidrs
   }
 
-  # Use EKS access entries (not the aws-auth ConfigMap) to grant cluster access.
+  # Use EKS access entries to grant cluster access.
   # The IAM identity that runs `terraform apply` becomes cluster admin.
   access_config {
     authentication_mode                         = "API"
@@ -97,9 +87,8 @@ resource "aws_eks_cluster" "main" {
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
 }
 
-###############################################################################
+#####################################################
 # IAM role and managed node group for worker nodes
-###############################################################################
 
 resource "aws_iam_role" "eks_nodes" {
   name = "${var.cluster_name}-node-role"
@@ -160,7 +149,7 @@ resource "aws_eks_node_group" "main" {
 
 ###############################################################################
 # IAM role for Jenkins (attached to the Jenkins EC2 instance)
-###############################################################################
+
 
 resource "aws_iam_role" "jenkins" {
   name = "${var.cluster_name}-jenkins-role"
@@ -244,9 +233,8 @@ resource "aws_eks_access_policy_association" "jenkins" {
   depends_on = [aws_eks_access_entry.jenkins]
 }
 
-###############################################################################
+##########################
 # Jenkins EC2 instance
-###############################################################################
 
 resource "aws_security_group" "jenkins" {
   name        = "${var.cluster_name}-jenkins-sg"
@@ -289,7 +277,7 @@ resource "aws_vpc_security_group_ingress_rule" "eks_api_from_jenkins" {
   description                  = "EKS API from Jenkins"
 }
 
-# Latest official Ubuntu Server 24.04 LTS AMI, published by Canonical
+
 data "aws_ssm_parameter" "ubuntu_ami" {
   name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }

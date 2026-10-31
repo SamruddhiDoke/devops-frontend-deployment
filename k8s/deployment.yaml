@@ -16,8 +16,6 @@ spec:
     spec:
       containers:
         - name: taskflow-frontend
-          # Jenkins replaces this placeholder with the ECR image URI at deploy time.
-          # Do not apply this file directly with kubectl; let the pipeline do it.
           image: IMAGE_URI_PLACEHOLDER
           ports:
             - containerPort: 80

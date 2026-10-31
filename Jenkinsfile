@@ -1,14 +1,7 @@
-// CI/CD pipeline: build the React frontend, push the image to Amazon ECR,
-// and deploy it to Amazon EKS.
-//
-// Runs on the Jenkins EC2 instance created by Terraform. AWS access comes from
-// the instance's IAM role, so no AWS keys are stored in Jenkins.
-
 pipeline {
     agent any
 
     environment {
-        // Must match the values in terraform/variables.tf and k8s/deployment.yaml
         AWS_REGION       = 'ap-south-1'
         ECR_REPOSITORY   = 'taskflow-frontend'
         EKS_CLUSTER_NAME = 'taskflow-eks'
@@ -21,10 +14,7 @@ pipeline {
         disableConcurrentBuilds()
         timeout(time: 30, unit: 'MINUTES')
     }
-
-    // Check GitHub for new commits about every 5 minutes. Jenkins only accepts
-    // traffic from your IP, so GitHub webhooks cannot reach it. Polling works
-    // without opening Jenkins to the internet. Active after the first manual build.
+   
     triggers {
         pollSCM('H/5 * * * *')
     }
@@ -38,9 +28,7 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                // Runs npm inside the official Node 22 image (same as the Dockerfile),
-                // so Node.js does not need to be installed on the Jenkins server.
-                // -u keeps the created files owned by the jenkins user.
+                
                 sh '''
                     docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp \
                         -v "$PWD/frontend":/app -w /app \
@@ -52,7 +40,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Look up the AWS account ID from the instance role instead of hardcoding it
+                   
                     env.AWS_ACCOUNT_ID = sh(
                         script: 'aws sts get-caller-identity --query Account --output text',
                         returnStdout: true
@@ -60,7 +48,7 @@ pipeline {
                     env.ECR_REGISTRY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
                     env.IMAGE_URI    = "${env.ECR_REGISTRY}/${env.ECR_REPOSITORY}:${env.IMAGE_TAG}"
                 }
-                // Build context is the repository root
+               
                 sh 'docker build -t "$IMAGE_URI" .'
             }
         }
@@ -85,8 +73,7 @@ pipeline {
 
         stage('Deploy to EKS') {
             steps {
-                // Replace the image placeholder with the image we just pushed, then apply.
-                // This both creates the Deployment (first run) and updates its image (later runs).
+                
                 sh '''
                     sed "s|IMAGE_URI_PLACEHOLDER|$IMAGE_URI|" k8s/deployment.yaml | kubectl apply -n "$K8S_NAMESPACE" -f -
                     kubectl apply -n "$K8S_NAMESPACE" -f k8s/service.yaml
@@ -96,9 +83,9 @@ pipeline {
 
         stage('Verify Rollout') {
             steps {
-                // Fails the pipeline if the new pods do not become ready in time
+                
                 sh 'kubectl rollout status deployment/"$DEPLOYMENT_NAME" -n "$K8S_NAMESPACE" --timeout=180s'
-                // -o wide shows the image the Deployment is now running
+                
                 sh 'kubectl get deployment "$DEPLOYMENT_NAME" -n "$K8S_NAMESPACE" -o wide'
             }
         }
@@ -106,7 +93,6 @@ pipeline {
 
     post {
         always {
-            // Free disk space on the Jenkins instance
             sh 'docker image rm "$IMAGE_URI" || true'
         }
         success {

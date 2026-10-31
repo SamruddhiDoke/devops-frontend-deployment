@@ -7,9 +7,6 @@ terraform {
       version = "~> 6.0"
     }
   }
-
-  # State is stored locally in terraform/terraform.tfstate (git-ignored).
-  # Keep it safe: losing it means Terraform can no longer manage these resources.
 }
 
 provider "aws" {

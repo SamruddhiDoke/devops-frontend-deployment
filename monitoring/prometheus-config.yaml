@@ -1,13 +1,3 @@
-# Prometheus configuration, mounted into the Prometheus pod at /etc/prometheus.
-#
-# What this collects (only endpoints that actually exist in this setup):
-#   - prometheus           : Prometheus' own metrics
-#   - grafana              : Grafana's built-in /metrics endpoint
-#   - kubernetes-apiserver : EKS API server metrics
-#   - kubernetes-cadvisor  : per-container CPU/memory/network usage from each node's kubelet
-#
-# Not collected: the frontend's Nginx has no metrics endpoint (would need nginx-prometheus-exporter),
-# and node-level OS metrics such as disk or load would need node-exporter.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,6 +17,10 @@ data:
       - job_name: grafana
         static_configs:
           - targets: ["grafana:3000"]
+
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets: ["kube-state-metrics:8080"]
 
       - job_name: kubernetes-apiserver
         scheme: https

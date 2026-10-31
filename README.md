@@ -126,7 +126,7 @@ Create the Grafana admin secret (use your own password, never commit it):
 kubectl create secret generic grafana-admin --from-literal=admin-user=admin --from-literal=admin-password='<choose-a-strong-password>'
 ```
 
-Apply `monitoring/prometheus-config.yaml`, `monitoring/prometheus.yaml` and `monitoring/grafana.yaml`. Then open Grafana through a port-forward (it is not exposed publicly):
+Apply `monitoring/prometheus-config.yaml`, `monitoring/kube-state-metrics.yaml`, `monitoring/prometheus.yaml` and `monitoring/grafana.yaml`. Then open Grafana through a port-forward (it is not exposed publicly):
 
 ```
 kubectl port-forward svc/grafana 3000:3000      # then open http://localhost:3000
@@ -135,7 +135,7 @@ kubectl port-forward svc/prometheus 9090:9090   # optional: Prometheus UI
 
 Grafana already has Prometheus set up as its default data source.
 
-**What is monitored:** Prometheus itself, Grafana, the EKS API server, and per-container CPU, memory and network usage (cAdvisor through the kubelet). For example: `container_memory_working_set_bytes{pod=~"taskflow-frontend.*"}`.
+**What is monitored:** Prometheus itself, Grafana, the EKS API server, per-container CPU, memory and network usage (cAdvisor through the kubelet), and pod, deployment and node state (kube-state-metrics). For example: `container_memory_working_set_bytes{pod=~"taskflow-frontend.*"}`.
 
 **What is not monitored:**
 - The Nginx frontend exposes no metrics endpoint. Request metrics would need `nginx-prometheus-exporter`.

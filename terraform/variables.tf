@@ -4,7 +4,6 @@ variable "aws_region" {
   default     = "ap-south-1"
 }
 
-# If you change any of the three names below, update the Jenkinsfile environment block too.
 variable "ecr_repository_name" {
   description = "Name of the ECR repository for the frontend image"
   type        = string

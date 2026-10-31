@@ -1,7 +1,3 @@
-# Grafana: Prometheus data source, Deployment and internal Service.
-#
-# The admin login comes from a Secret named "grafana-admin" that you create yourself
-# (it is NOT stored in this repo). See README -> "Monitoring".
 apiVersion: v1
 kind: ConfigMap
 metadata:
