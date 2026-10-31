@@ -83,7 +83,7 @@ Leaving everything running costs roughly **US $7 per day (about $0.30 per hour)*
 
 1. `terraform/terraform.tfvars` (copy it from `terraform.tfvars.example`):
    - `jenkins_key_name`: your existing key pair name
-   - `jenkins_allowed_cidr`: your public IP as `x.x.x.x/32`
+   - Jenkins ports 22 and 8080 are open to `0.0.0.0/0` (any IP). Protect Jenkins with a strong admin password.
 2. `kubernetes_version` (default `1.37`, in EKS standard support until Dec 2027 per AWS docs): confirm it with `aws eks describe-cluster-versions` before you apply.
 3. Grafana admin credentials: create them as a Kubernetes Secret (see Monitoring). Never commit them.
 

@@ -51,16 +51,6 @@ variable "jenkins_key_name" {
   type        = string
 }
 
-variable "jenkins_allowed_cidr" {
-  description = "Your public IP in CIDR form (e.g. x.x.x.x/32). Allowed to reach the Jenkins web UI on port 8080"
-  type        = string
-
-  validation {
-    condition     = can(cidrhost(var.jenkins_allowed_cidr, 0))
-    error_message = "jenkins_allowed_cidr must be a valid CIDR block, for example 203.0.113.10/32."
-  }
-}
-
 variable "cluster_endpoint_public_cidrs" {
   description = "CIDRs allowed to reach the public EKS API endpoint (access still requires valid IAM credentials)"
   type        = list(string)
