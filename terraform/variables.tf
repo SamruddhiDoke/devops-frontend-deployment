@@ -52,7 +52,7 @@ variable "jenkins_key_name" {
 }
 
 variable "jenkins_allowed_cidr" {
-  description = "Your public IP in CIDR form (e.g. x.x.x.x/32). Allowed to reach Jenkins on ports 8080 and 22"
+  description = "Your public IP in CIDR form (e.g. x.x.x.x/32). Allowed to reach the Jenkins web UI on port 8080"
   type        = string
 
   validation {
